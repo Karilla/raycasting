@@ -49,11 +49,11 @@ typedef struct Player
     float angle;
 } Player;
 
-typedef struct State
+typedef struct RaycastInfo
 {
-    V2 dir;
-    V2 cameraPlane;
-};
+    V2 point;
+    float perpDist;
+} RaycastInfo;
 
 void draw_map()
 {
@@ -91,7 +91,7 @@ void DrawVector(V2 begin, V2 end, Color color)
     DrawLine(begin.x * SQUARE_SIZE, begin.y * SQUARE_SIZE, end.x * SQUARE_SIZE, end.y * SQUARE_SIZE, color);
 }
 
-V2 raycast(Player *player, V2 *newDir, float angle)
+RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
 {
     V2i map = (V2i){(int)player->pos.x, (int)player->pos.y};
     V2 normPlayer = player->pos;
@@ -147,8 +147,10 @@ V2 raycast(Player *player, V2 *newDir, float angle)
             hit = 1;
         }
     }
+    RaycastInfo *info = (RaycastInfo *)calloc(1, sizeof(RaycastInfo));
     V2 intersectPoint = VEC_SCALAR(dir, dist);
-    return VEC_ADD(normPlayer, intersectPoint);
+    info->point = VEC_ADD(normPlayer, intersectPoint);
+    return info;
 }
 
 int main(int argc, char const *argv[])
