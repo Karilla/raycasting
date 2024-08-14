@@ -1,7 +1,7 @@
 CC=gcc
 CC_OPTION= -lraylib -lm
 EXEC_NAME= rayfun
-CFLAGS= -Wall
+CFLAGS= -Wall -g
 SRC_DIRS = $(shell find . -type f \( -name '*.c' -o -name '*.h' \) -exec dirname {} \; | sort | uniq)
 
 # Trouver tous les fichiers .c dans les répertoires trouvés

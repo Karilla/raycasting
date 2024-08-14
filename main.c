@@ -23,11 +23,11 @@ const int WIDTH = 8;
 const int HEIGHT = 8;
 
 uint8_t MAP[] = {1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 0, 1, 0, 0, 0, 0, 1,
+                 1, 0, 1, 0, 1, 0, 0, 1,
+                 1, 0, 1, 0, 1, 0, 0, 1,
+                 1, 0, 1, 1, 1, 0, 0, 1,
                  1, 0, 0, 0, 0, 0, 0, 1,
-                 1, 0, 0, 0, 0, 0, 0, 1,
-                 1, 0, 0, 0, 0, 0, 0, 1,
-                 1, 0, 1, 1, 0, 0, 0, 1,
-                 1, 0, 1, 1, 0, 0, 0, 1,
                  1, 0, 0, 0, 0, 0, 0, 1,
                  1, 1, 1, 1, 1, 1, 1, 1};
 
@@ -91,11 +91,11 @@ void DrawVector(V2 begin, V2 end, Color color)
     DrawLine(begin.x * SQUARE_SIZE, begin.y * SQUARE_SIZE, end.x * SQUARE_SIZE, end.y * SQUARE_SIZE, color);
 }
 
-V2 raycast(Player *player, float angle)
+V2 raycast(Player *player, V2 *newDir, float angle)
 {
     V2i map = (V2i){(int)player->pos.x, (int)player->pos.y};
     V2 normPlayer = player->pos;
-    V2 dir = rotate_vector((V2){1, 0}, angle);
+    V2 dir = (V2){newDir->x, newDir->y};
     dir = NORMALISE(dir);
     V2 sideDist;
     V2 rayUnitStepSize = {sqrtf(1 + POW(dir.y / dir.x)), sqrtf(1 + POW(dir.x / dir.y))};
@@ -145,14 +145,10 @@ V2 raycast(Player *player, float angle)
         if (MAP[map.y * 8 + map.x] > 0)
         {
             hit = 1;
-            DrawRectangle(map.x * 50, map.y * 50, 50, 50, YELLOW);
         }
     }
     V2 intersectPoint = VEC_SCALAR(dir, dist);
-    intersectPoint = VEC_ADD(normPlayer, intersectPoint);
-    DrawCircle(intersectPoint.x * SQUARE_SIZE, intersectPoint.y * SQUARE_SIZE, 5, GREEN);
-
-    return intersectPoint;
+    return VEC_ADD(normPlayer, intersectPoint);
 }
 
 int main(int argc, char const *argv[])
@@ -160,7 +156,7 @@ int main(int argc, char const *argv[])
     char text[500] = {0};
     InitWindow(800, 800, "Raycasting demo");
     Player player = {{2, 2}, 0};
-    V2 plane = NORMALISE(((V2){0.0f, 0.66f}));
+    V2 plane;
     V2 dir;
     SetTargetFPS(60);
     while (!WindowShouldClose())
@@ -180,8 +176,6 @@ int main(int argc, char const *argv[])
         plane = NORMALISE(((V2){0.0f, 0.66f}));
         dir = rotate_vector(dir, player.angle);
         plane = rotate_vector(plane, player.angle);
-        V2 test = VEC_ADD(player.pos, dir);
-        test = VEC_ADD(test, plane);
         if (IsKeyDown(KEY_W))
         {
             player.pos = VEC_ADD(player.pos, VEC_SCALAR(dir, PLAYER_SPEED));
@@ -190,37 +184,24 @@ int main(int argc, char const *argv[])
         {
             player.pos = VEC_MINUS(player.pos, VEC_SCALAR(dir, PLAYER_SPEED));
         }
-        V2 normal = NORMAL_VEC(dir);
-        dir = VEC_ADD(player.pos, dir);
-        normal = NORMALISE(normal);
-        V2 normal1 = VEC_ADD(dir, normal);
-        V2 normal2 = VEC_MINUS(dir, normal);
+        V2 playerDir = VEC_ADD(player.pos, dir);
+        V2 point;
         BeginDrawing();
-
+        ClearBackground(RAYWHITE);
         draw_map();
-        // dir = NORMALISE(dir);
-        // DrawVector(player.pos, test, BLACK);
-        for (int x = 1; x < 8 * SQUARE_SIZE; x++)
+        dir = NORMALISE(dir);
+        for (int x = 0; x < 8 * SQUARE_SIZE; x++)
         {
             float cameraX = 2 * x / (float)(8 * SQUARE_SIZE) - 1;
             V2 lerp = VEC_SCALAR(plane, cameraX);
             V2 newDir = VEC_ADD(dir, lerp);
-            DrawLine(player.pos.x * SQUARE_SIZE, player.pos.y * SQUARE_SIZE, newDir.x * SQUARE_SIZE, newDir.y * SQUARE_SIZE, GREEN);
+            V2 newPlayerDir = VEC_ADD(newDir, player.pos);
+            DrawVector(player.pos, point, GREEN);
+            point = raycast(&player, &newDir, player.angle);
         }
-
-        V2 point = raycast(&player, player.angle);
         snprintf(text, 500, "Player x = %f\nPLayer y = %f", player.pos.x, player.pos.y);
         DrawText(text, SQUARE_SIZE * 8 + 10, 20, 10, RED);
-        DrawCircle(player.pos.x * SQUARE_SIZE, player.pos.y * SQUARE_SIZE, 3, RED);
-        DrawLine(player.pos.x * SQUARE_SIZE, player.pos.y * SQUARE_SIZE, point.x * SQUARE_SIZE, point.y * SQUARE_SIZE, BLUE);
-        // DrawLine(dir.x * SQUARE_SIZE, dir.y * SQUARE_SIZE, normal1.x * SQUARE_SIZE, normal1.y * SQUARE_SIZE, BLACK);
-        // DrawLine(dir.x * SQUARE_SIZE, dir.y * SQUARE_SIZE, normal2.x * SQUARE_SIZE, normal2.y * SQUARE_SIZE, BLACK);
-        // DrawLine(player.pos.x * SQUARE_SIZE, player.pos.y * SQUARE_SIZE, normal1.x * SQUARE_SIZE, normal1.y * SQUARE_SIZE, RED);
-        // DrawLine(player.pos.x * SQUARE_SIZE, player.pos.y * SQUARE_SIZE, normal2.x * SQUARE_SIZE, normal2.y * SQUARE_SIZE, RED);
-        ClearBackground(RAYWHITE);
-
         EndDrawing();
-        // angle += 0.01;
     }
 
     CloseWindow();
