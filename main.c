@@ -57,6 +57,7 @@ typedef struct RaycastInfo
     V2 point;
     float perpDist;
     Color color;
+    float wallX;
 } RaycastInfo;
 
 void draw_map()
@@ -162,11 +163,15 @@ RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
     RaycastInfo *info = (RaycastInfo *)calloc(1, sizeof(RaycastInfo));
     V2 intersectPoint = VEC_SCALAR(dir, dist);
     info->point = VEC_ADD(normPlayer, intersectPoint);
-    if (side == 0)
+    if (side == 0){
         info->perpDist = sideDist.x - rayUnitStepSize.x;
-    else
+        info->wallX = player->pos.y + info->perpDist * dir.y;
+    }
+    else{
         info->perpDist = sideDist.y - rayUnitStepSize.y;
-
+        info->wallX = player->pos.x + info->perpDist * dir.x;
+    }
+    info->wallX -= floorf(info->wallX);
     switch (hit)
     {
     case 1:
@@ -190,6 +195,7 @@ RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
 
 int main(int argc, char const *argv[])
 {
+   
     char text[500] = {0};
     InitWindow(800, 800, "Raycasting demo");
     Player player = {{1.5, 1.5}, 0};
@@ -197,6 +203,8 @@ int main(int argc, char const *argv[])
     V2 dir;
     SetTargetFPS(60);
     RaycastInfo *hit = (RaycastInfo *)malloc(sizeof(RaycastInfo));
+     Texture2D texture = LoadTexture("./asset/texture/bluestone.png");
+     printf("Texture width = %d and texture height = %d\n",texture.width,texture.height);
     while (!WindowShouldClose())
     {
 
@@ -229,6 +237,8 @@ int main(int argc, char const *argv[])
         // DrawRenderScene();
         draw_map();
         dir = NORMALISE(dir);
+        float wallX;
+        //printf("Test\n");
         for (int x = 0; x < HEIGHT; x++)
         {
             float cameraX = 2 * x / (float)(8 * SQUARE_SIZE) - 1;
@@ -238,11 +248,13 @@ int main(int argc, char const *argv[])
 
             hit = raycast(&player, &newDir, player.angle);
             DrawVector(player.pos, hit->point, GREEN);
+                
             int h, y0, y1;
             h = (int)HEIGHT / hit->perpDist;
             y0 = max((HEIGHT / 2) - (h / 2), 0);
             y1 = min((HEIGHT / 2) + (h / 2), HEIGHT - 1);
-            DrawLine(x, y0 + HEIGHT, x, y1 + HEIGHT, hit->color);
+            DrawTextureRec(texture,(Rectangle){.x = x, .y = y0+1,.width=0.6,.height=y1-y0},(Vector2){.x = x,.y = y0 + HEIGHT}, WHITE);
+            //DrawLine(x, y0 + HEIGHT, x, y1 + HEIGHT, hit->color);
         }
         snprintf(text, 500, "Player x = %f\nPLayer y = %f", player.pos.x, player.pos.y);
         DrawText(text, SQUARE_SIZE * 8 + 10, 20, 10, RED);
