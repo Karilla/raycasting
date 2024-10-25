@@ -22,8 +22,12 @@ const int SQUARE_SIZE = 50;
 
 const float PLAYER_SPEED = 0.03;
 
-const int WIDTH = 8 * SQUARE_SIZE;
-const int HEIGHT = 8 * SQUARE_SIZE;
+const int SIZE = 8;
+
+const int WIDTH = SIZE * SQUARE_SIZE;
+const int HEIGHT = SIZE * SQUARE_SIZE;
+
+const float texSize = 64;
 
 uint8_t MAP[] = {1, 1, 1, 1, 1, 1, 1, 1,
                  1, 0, 2, 0, 0, 0, 0, 1,
@@ -57,7 +61,9 @@ typedef struct RaycastInfo
     V2 point;
     float perpDist;
     Color color;
+    int mapX;
     float wallX;
+    int texX;
 } RaycastInfo;
 
 void draw_map()
@@ -69,15 +75,15 @@ void draw_map()
 
             if (MAP[y * 8 + x] == 0)
             {
-                DrawRectangle(x * 50, y * 50, 50, 50, WHITE);
+                DrawRectangle(x * SQUARE_SIZE, y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE, WHITE);
             }
             else
             {
-                DrawRectangle(x * 50, y * 50, 50, 50, BLACK);
+                DrawRectangle(x * SQUARE_SIZE, y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE, BLACK);
             }
-            DrawLine(x * 50, y * 50, 8 * 50, y * 50, BLACK);
+            DrawLine(x * SQUARE_SIZE, y * SQUARE_SIZE, SIZE * SQUARE_SIZE, y * SQUARE_SIZE, BLACK);
         }
-        DrawLine(x * 50, 0, x * 50, 8 * 50, BLACK);
+        DrawLine(x * SQUARE_SIZE, 0, x * SQUARE_SIZE, SIZE * SQUARE_SIZE, BLACK);
     }
 }
 
@@ -154,42 +160,38 @@ RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
             map.y += step.y;
             side = 1;
         }
-
         // Check if ray has hit a wall
         hit = MAP[map.y * 8 + map.x];
     }
-    Color color;
 
     RaycastInfo *info = (RaycastInfo *)calloc(1, sizeof(RaycastInfo));
     V2 intersectPoint = VEC_SCALAR(dir, dist);
     info->point = VEC_ADD(normPlayer, intersectPoint);
+
+    // Calculate the perpendicular distance
     if (side == 0){
         info->perpDist = sideDist.x - rayUnitStepSize.x;
-        info->wallX = player->pos.y + info->perpDist * dir.y;
     }
     else{
         info->perpDist = sideDist.y - rayUnitStepSize.y;
-        info->wallX = player->pos.x + info->perpDist * dir.x;
     }
-    info->wallX -= floorf(info->wallX);
-    switch (hit)
-    {
-    case 1:
-        info->color = BLACK;
-        break;
-    case 2:
-        info->color = GREEN;
-        break;
-    case 3:
-        info->color = YELLOW;
-        break;
-    case 4:
-        info->color = RED;
-        break;
-    default:
-        info->color = BLACK;
-        break;
-    }
+
+    //Calculate wallX 
+    float wallX;
+    if (side == 0) wallX = player->pos.y + info->perpDist * dir.y;
+    else wallX = player->pos.x + info->perpDist * dir.x;
+    wallX -= floorf(wallX);
+
+    // Calculate texX
+    int texX = (int)(wallX * (float)texSize);
+    if (side == 0 && dir.x > 0) texX = texSize - texX - 1;
+    if (side == 1 && dir.y < 0) texX = texSize - texX - 1;
+    texX = texX & (int)(texSize - 1); // Ensure texX is within the valid range
+
+    // Set the calculated values in the hit structure
+    info->wallX = wallX;
+    info->texX = texX;
+    info->mapX = map.x;
     return info;
 }
 
@@ -197,14 +199,13 @@ int main(int argc, char const *argv[])
 {
    
     char text[500] = {0};
-    InitWindow(800, 800, "Raycasting demo");
+    InitWindow(HEIGHT * 2, HEIGHT * 2, "Raycasting demo");
     Player player = {{1.5, 1.5}, 0};
     V2 plane;
     V2 dir;
     SetTargetFPS(60);
     RaycastInfo *hit = (RaycastInfo *)malloc(sizeof(RaycastInfo));
-     Texture2D texture = LoadTexture("./asset/texture/bluestone.png");
-     printf("Texture width = %d and texture height = %d\n",texture.width,texture.height);
+    Texture2D texture = LoadTexture("./asset/texture/bluestone.png");
     while (!WindowShouldClose())
     {
 
@@ -230,30 +231,35 @@ int main(int argc, char const *argv[])
         {
             player.pos = VEC_MINUS(player.pos, VEC_SCALAR(dir, PLAYER_SPEED));
         }
-        V2 playerDir = VEC_ADD(player.pos, dir);
-        V2 point;
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        // DrawRenderScene();
         draw_map();
         dir = NORMALISE(dir);
-        float wallX;
-        //printf("Test\n");
         for (int x = 0; x < HEIGHT; x++)
         {
             float cameraX = 2 * x / (float)(8 * SQUARE_SIZE) - 1;
-            V2 lerp = VEC_SCALAR(plane, cameraX);
-            V2 newDir = VEC_ADD(dir, lerp);
-            V2 newPlayerDir = VEC_ADD(newDir, player.pos);
+            V2 newDir = VEC_ADD(dir, VEC_SCALAR(plane, cameraX));
 
             hit = raycast(&player, &newDir, player.angle);
             DrawVector(player.pos, hit->point, GREEN);
                 
             int h, y0, y1;
-            h = (int)HEIGHT / hit->perpDist;
+            h = (int)(HEIGHT / hit->perpDist);
             y0 = max((HEIGHT / 2) - (h / 2), 0);
             y1 = min((HEIGHT / 2) + (h / 2), HEIGHT - 1);
-            DrawTextureRec(texture,(Rectangle){.x = x, .y = y0+1,.width=0.6,.height=y1-y0},(Vector2){.x = x,.y = y0 + HEIGHT}, WHITE);
+            Rectangle source = (Rectangle){
+                .x = hit->texX,
+                .y = 0,
+                .width = 1,
+                .height = texture.height
+            };
+            Rectangle dest = (Rectangle){
+                .x = x,
+                .y = HEIGHT + y0,
+                .width = 1,
+                .height = y1 - y0,
+            };
+             DrawTexturePro(texture, source, dest,(Vector2){0,0},0.0f, RAYWHITE);
             //DrawLine(x, y0 + HEIGHT, x, y1 + HEIGHT, hit->color);
         }
         snprintf(text, 500, "Player x = %f\nPLayer y = %f", player.pos.x, player.pos.y);
