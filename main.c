@@ -22,21 +22,23 @@ const int SQUARE_SIZE = 50;
 
 const float PLAYER_SPEED = 0.03;
 
-const int SIZE = 8;
+const int SIZE = 10;
 
 const int WIDTH = SIZE * SQUARE_SIZE;
 const int HEIGHT = SIZE * SQUARE_SIZE;
 
 const float texSize = 64;
 
-uint8_t MAP[] = {1, 1, 1, 1, 1, 1, 1, 1,
-                 1, 0, 2, 0, 0, 0, 0, 1,
-                 1, 0, 3, 0, 4, 0, 0, 1,
-                 1, 0, 4, 0, 3, 0, 0, 1,
-                 1, 0, 2, 1, 2, 0, 0, 1,
-                 1, 0, 0, 0, 0, 0, 0, 1,
-                 1, 0, 0, 0, 0, 0, 0, 1,
-                 1, 1, 1, 1, 1, 1, 1, 1};
+uint8_t MAP[] = {1, 1, 1, 1, 1, 1, 1, 1,1,1,
+                 1, 0, 2, 0, 0, 0, 0, 0,0,1,
+                 1, 0, 3, 0, 4, 0, 0, 0,1,1,
+                 1, 0, 4, 0, 3, 0, 0, 0,1,1,
+                 1, 0, 2, 1, 2, 0, 0, 0,0,1,
+                 1, 0, 0, 0, 0, 0, 0, 0,0,1,
+                 1, 0, 0, 0, 0, 0, 0, 0,0,1,
+                 1, 1, 0, 1, 0, 1, 1, 0,0,1,
+                 1, 1, 0, 1, 0, 1, 1, 0,0,1,
+                 1, 1, 1, 1, 1, 1, 1, 1,1,1};
 
 typedef struct Vec2
 {
@@ -68,12 +70,12 @@ typedef struct RaycastInfo
 
 void draw_map()
 {
-    for (uint8_t x = 0; x < 8; x++)
+    for (uint8_t x = 0; x < SIZE; x++)
     {
-        for (uint8_t y = 0; y < 8; y++)
+        for (uint8_t y = 0; y < SIZE; y++)
         {
 
-            if (MAP[y * 8 + x] == 0)
+            if (MAP[y * SIZE + x] == 0)
             {
                 DrawRectangle(x * SQUARE_SIZE, y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE, WHITE);
             }
@@ -160,7 +162,7 @@ RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
             side = 1;
         }
         // Check if ray has hit a wall
-        hit = MAP[map.y * 8 + map.x];
+        hit = MAP[map.y * SIZE + map.x];
     }
 
     RaycastInfo *info = (RaycastInfo *)calloc(1, sizeof(RaycastInfo));
@@ -219,10 +221,11 @@ int main(int argc, char const *argv[])
         }
 
         dir = (V2){1, 0};
-        plane = NORMALISE(((V2){0.0f, 0.01}));
+        plane = NORMALISE(((V2){0.0f, 0.1}));
         dir = rotate_vector(dir, player.angle);
+        hit = raycast(&player, &dir, player.angle);
         plane = rotate_vector(plane, player.angle);
-        if (IsKeyDown(KEY_W))
+        if (IsKeyDown(KEY_W) && hit->perpDist > 0.1)
         {
             player.pos = VEC_ADD(player.pos, VEC_SCALAR(dir, PLAYER_SPEED));
         }
@@ -259,11 +262,10 @@ int main(int argc, char const *argv[])
             };
             Rectangle dest = (Rectangle){
                 .x = x,
-                .y = (HEIGHT +  (HEIGHT / 2) - (lineHeight / 2)),
+                .y = HEIGHT + ((HEIGHT / 2) - (lineHeight / 2)),
                 .width = 1,
                 .height = lineHeight,
             };
-            printf("Line height = %d\n", lineHeight);
             DrawTexturePro(texture, source, dest,(Vector2){0,0},0.0f, RAYWHITE);
             //DrawLine(x, y0 + HEIGHT, x, y1 + HEIGHT, hit->color);
         }
@@ -274,5 +276,6 @@ int main(int argc, char const *argv[])
     }
 
     CloseWindow();
+    free(hit);
     return 0;
 }
