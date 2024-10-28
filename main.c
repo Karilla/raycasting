@@ -135,7 +135,6 @@ RaycastInfo *raycast(Player *player, V2 *newDir, float angle)
     {
         step.x = 1;
     }
-
     if (dir.y < 0)
     {
         step.y = -1;
@@ -205,10 +204,10 @@ int main(int argc, char const *argv[])
     V2 dir;
     SetTargetFPS(60);
     RaycastInfo *hit = (RaycastInfo *)malloc(sizeof(RaycastInfo));
-    Texture2D texture = LoadTexture("./asset/texture/bluestone.png");
+    Texture2D texture = LoadTexture("./asset/texture/eagle.png");
     while (!WindowShouldClose())
     {
-
+        
         if (IsKeyDown(KEY_A))
         {
             player.angle += 0.06;
@@ -220,7 +219,7 @@ int main(int argc, char const *argv[])
         }
 
         dir = (V2){1, 0};
-        plane = NORMALISE(((V2){0.0f, 0.50f}));
+        plane = NORMALISE(((V2){0.0f, 0.01}));
         dir = rotate_vector(dir, player.angle);
         plane = rotate_vector(plane, player.angle);
         if (IsKeyDown(KEY_W))
@@ -243,10 +242,15 @@ int main(int argc, char const *argv[])
             hit = raycast(&player, &newDir, player.angle);
             DrawVector(player.pos, hit->point, GREEN);
                 
-            int h, y0, y1;
-            h = (int)(HEIGHT / hit->perpDist);
-            y0 = max((HEIGHT / 2) - (h / 2), 0);
-            y1 = min((HEIGHT / 2) + (h / 2), HEIGHT - 1);
+            int lineHeight, y0, y1;
+            lineHeight = (int)(HEIGHT / hit->perpDist);
+            y0 = max((HEIGHT / 2) - (lineHeight / 2), 0);
+            y1 = min((HEIGHT / 2) + (lineHeight / 2), HEIGHT - 1);
+            int diff;
+            if(lineHeight > HEIGHT){
+                diff = lineHeight - HEIGHT;
+                //y0 = -diff;
+            }
             Rectangle source = (Rectangle){
                 .x = hit->texX,
                 .y = 0,
@@ -255,14 +259,16 @@ int main(int argc, char const *argv[])
             };
             Rectangle dest = (Rectangle){
                 .x = x,
-                .y = HEIGHT + y0,
+                .y = (HEIGHT +  (HEIGHT / 2) - (lineHeight / 2)),
                 .width = 1,
-                .height = y1 - y0,
+                .height = lineHeight,
             };
-             DrawTexturePro(texture, source, dest,(Vector2){0,0},0.0f, RAYWHITE);
+            printf("Line height = %d\n", lineHeight);
+            DrawTexturePro(texture, source, dest,(Vector2){0,0},0.0f, RAYWHITE);
             //DrawLine(x, y0 + HEIGHT, x, y1 + HEIGHT, hit->color);
         }
         snprintf(text, 500, "Player x = %f\nPLayer y = %f", player.pos.x, player.pos.y);
+
         DrawText(text, SQUARE_SIZE * 8 + 10, 20, 10, RED);
         EndDrawing();
     }
